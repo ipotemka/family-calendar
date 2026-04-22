@@ -1,3 +1,6 @@
+Here is the complete [index.html](index.html):
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -123,7 +126,7 @@ body {
    WEEK ROW
    ========================================================== */
 .week-row {
-  position: relative;        /* anchor for absolute event layer */
+  position: relative;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   min-height: 64px;
@@ -164,10 +167,9 @@ body {
   border-radius: 50%;
   color: #1a1a1a;
   position: relative;
-  z-index: 1;               /* stay above event bars */
+  z-index: 1;
 }
 
-/* Small "+" button that appears on hover */
 .add-btn {
   position: absolute;
   bottom: 4px;
@@ -193,14 +195,14 @@ body {
 .add-btn:hover { border-color: #888; color: #555; }
 
 /* ==========================================================
-   EVENT LAYER  (absolutely covers the entire week row)
+   EVENT LAYER
    ========================================================== */
 .event-layer {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  pointer-events: none;     /* clicks fall through to day cells … */
+  pointer-events: none;
   overflow: visible;
   z-index: 2;
 }
@@ -219,7 +221,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: grab;
-  pointer-events: all;      /* … but event bars ARE clickable */
+  pointer-events: all;
   user-select: none;
   transition: filter 0.1s, transform 0.12s;
 }
@@ -302,7 +304,6 @@ body {
 
 .field input:focus { border-color: #1a1a1a; }
 
-/* Color swatch picker */
 .swatches {
   display: flex;
   gap: 6px;
@@ -322,7 +323,6 @@ body {
 .swatch:hover    { transform: scale(1.14); }
 .swatch.selected { border-color: #1a1a1a; }
 
-/* Modal action buttons */
 .modal-actions {
   display: flex;
   gap: 7px;
@@ -451,7 +451,7 @@ const MONTH_NAMES = [
 
 const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-const STORAGE_KEY = 'family-summer-2026';
+const API_URL = 'https://family-calendar-production-cd3b.up.railway.app/api/events';
 
 // Color palette for events
 const PALETTE = [
@@ -581,31 +581,44 @@ function colForDate(week, str) {
 
 
 // ==========================================================
-//  LOCAL STORAGE
+//  API PERSISTENCE
 // ==========================================================
 
-function saveToStorage() {
+/** Load events from the server on startup.
+ *  GET /api/events → plain array of events.
+ *  Falls back to DEFAULT_EVENTS if the server returns empty or errors. */
+async function loadFromStorage() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ events, nextId }));
-  } catch (e) { /* storage unavailable */ }
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error(`GET ${API_URL} → ${res.status}`);
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      events = data;
+      nextId  = Math.max(10, ...data.map(e => e.id + 1));
+      return;
+    }
+  } catch (e) {
+    console.error('Could not load events:', e);
+  }
+  // First run or server empty — seed with defaults
+  events = DEFAULT_EVENTS.map(e => ({ ...e }));
+  nextId  = 10;
 }
 
-function loadFromStorage() {
+/** Persist the full events array to the server.
+ *  POST /api/events with the plain events array as the JSON body. */
+async function saveToStorage() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (Array.isArray(data.events) && data.events.length > 0) {
-        events = data.events;
-        nextId = data.nextId ?? 10;
-        return;
-      }
-    }
-  } catch (e) { /* fall through */ }
-
-  // First load — use the default events
-  events = DEFAULT_EVENTS.map(e => ({ ...e }));
-  nextId = 10;
+    const res = await fetch(API_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(events),
+    });
+    if (!res.ok) throw new Error(`POST ${API_URL} → ${res.status}`);
+  } catch (e) {
+    console.error('Could not save events:', e);
+    showToast('Could not save — check server connection');
+  }
 }
 
 
@@ -624,12 +637,10 @@ function renderCalendar() {
 function buildMonthBlock(year, month) {
   const block = el('div', 'month-block');
 
-  // Month name heading
   const title = el('div', 'month-name');
   title.textContent = MONTH_NAMES[month];
   block.appendChild(title);
 
-  // Mon … Sun header row
   const dowRow = el('div', 'dow-header');
   DAY_LABELS.forEach((label, i) => {
     const cell = el('div', 'dow-label' + (i >= 5 ? ' weekend' : ''));
@@ -638,7 +649,6 @@ function buildMonthBlock(year, month) {
   });
   block.appendChild(dowRow);
 
-  // Week rows
   weeksForMonth(year, month).forEach(week => {
     block.appendChild(buildWeekRow(week, year, month));
   });
@@ -650,7 +660,6 @@ function buildMonthBlock(year, month) {
 function buildWeekRow(week, year, month) {
   const row = el('div', 'week-row');
 
-  // Determine the date range covered by non-null slots in this week
   let weekStart = null, weekEnd = null;
   week.forEach(day => {
     if (day === null) return;
@@ -659,18 +668,15 @@ function buildWeekRow(week, year, month) {
     weekEnd = d;
   });
 
-  // Day cells
   week.forEach((day, col) => {
     row.appendChild(buildDayCell(day, col, year, month));
   });
 
-  // Event overlay (only when the week has valid dates)
   if (weekStart) {
     const weekEvents = events.filter(ev => ev.start <= weekEnd && ev.end >= weekStart);
     if (weekEvents.length > 0) {
       const { layer, laneCount } = buildEventLayer(weekEvents, week, weekStart, weekEnd, year, month);
       row.appendChild(layer);
-      // Expand row height to fit all event lanes without clipping
       row.style.minHeight = Math.max(64, 34 + laneCount * 26 + 4) + 'px';
     }
   }
@@ -680,7 +686,7 @@ function buildWeekRow(week, year, month) {
 
 /** Build one day cell */
 function buildDayCell(day, col, year, month) {
-  const isEmpty  = (day === null);
+  const isEmpty   = (day === null);
   const isWeekend = (col >= 5);
   const cell = el('div', ['day-cell', isWeekend && 'weekend', isEmpty && 'empty'].filter(Boolean).join(' '));
 
@@ -689,22 +695,18 @@ function buildDayCell(day, col, year, month) {
     if (ds === TODAY) cell.classList.add('today');
     cell.dataset.date = ds;
 
-    // Day number
     const num = el('span', 'day-num');
     num.textContent = day;
     cell.appendChild(num);
 
-    // Hover "+" button
     const addBtn = el('button', 'add-btn');
     addBtn.textContent = '+';
     addBtn.title = 'Add event';
     addBtn.addEventListener('click', e => { e.stopPropagation(); openAddModal(ds); });
     cell.appendChild(addBtn);
 
-    // Click anywhere in the cell to add
     cell.addEventListener('click', () => openAddModal(ds));
 
-    // Drop target for drag-and-drop
     cell.addEventListener('dragover',  e => { e.preventDefault(); cell.classList.add('drop-highlight'); });
     cell.addEventListener('dragleave', ()  => cell.classList.remove('drop-highlight'));
     cell.addEventListener('drop', e => {
@@ -723,17 +725,15 @@ function buildDayCell(day, col, year, month) {
  */
 function buildEventLayer(weekEvents, week, weekStart, weekEnd, year, month) {
   const layer = el('div', 'event-layer');
-  const lanes = []; // tracks occupied column ranges per lane
+  const lanes = [];
 
   weekEvents.forEach(ev => {
-    // Clamp event dates to this week's visible range
     const clampedStart = ev.start < weekStart ? weekStart : ev.start;
     const clampedEnd   = ev.end   > weekEnd   ? weekEnd   : ev.end;
 
     const startCol = colForDate(week, clampedStart);
     const endCol   = colForDate(week, clampedEnd);
 
-    // Assign to the first lane that has no column conflict
     let lane = 0;
     while (true) {
       if (!lanes[lane]) lanes[lane] = [];
@@ -758,42 +758,34 @@ function buildEventBar(ev, startCol, endCol, lane, weekStart, weekEnd) {
   bar.style.background = color.bg;
   bar.style.color      = color.fg;
 
-  // Horizontal position (percentage-based columns with small inset gaps)
   const colW = 100 / 7;
   const gap  = 1.5;
   bar.style.left   = `calc(${startCol * colW}% + ${gap}px)`;
   bar.style.width  = `calc(${(endCol - startCol + 1) * colW}% - ${gap * 2}px)`;
+  bar.style.top    = `${32 + lane * 26}px`;
 
-  // Vertical position (below day numbers, stacked by lane)
-  bar.style.top = `${32 + lane * 26}px`;
-
-  // Only round the corners at the true start and end of the event
   const roundL = ev.start >= weekStart ? '4px' : '0';
   const roundR = ev.end   <= weekEnd   ? '4px' : '0';
   bar.style.borderRadius = `${roundL} ${roundR} ${roundR} ${roundL}`;
 
-  // Label text — show a small arrow if the event continues from a previous week
   if (ev.start >= weekStart) {
     bar.textContent = ev.title;
   } else {
     bar.innerHTML = `<span style="opacity:.4;margin-right:3px">&#9664;</span>${ev.title}`;
   }
 
-  // ── Drag ──────────────────────────────────────────────
   bar.setAttribute('draggable', 'true');
 
   bar.addEventListener('dragstart', e => {
-    // Calculate which day within the event the user grabbed
-    const rect      = bar.getBoundingClientRect();
-    const dayWidth  = rect.width / (endCol - startCol + 1);
-    const offset    = Math.max(0, Math.floor((e.clientX - rect.left) / dayWidth));
-    const grabbed   = addDays(ev.start < weekStart ? weekStart : ev.start, offset);
+    const rect     = bar.getBoundingClientRect();
+    const dayWidth = rect.width / (endCol - startCol + 1);
+    const offset   = Math.max(0, Math.floor((e.clientX - rect.left) / dayWidth));
+    const grabbed  = addDays(ev.start < weekStart ? weekStart : ev.start, offset);
 
     drag = { active: true, eventId: ev.id, grabbedDate: grabbed };
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(ev.id));
 
-    // Delay so the drag ghost renders before the bar fades
     setTimeout(() => bar.classList.add('is-dragging'), 0);
   });
 
@@ -802,7 +794,6 @@ function buildEventBar(ev, startCol, endCol, lane, weekStart, weekEnd) {
     drag.active = false;
   });
 
-  // ── Click to edit ─────────────────────────────────────
   bar.addEventListener('click', e => { e.stopPropagation(); openEditModal(ev.id); });
 
   return bar;
@@ -825,7 +816,6 @@ function handleDrop(targetDate) {
   const newStart = addDays(ev.start, delta);
   const newEnd   = addDays(newStart, duration);
 
-  // Stay within the visible summer range
   if (newStart < '2026-06-01' || newEnd > '2026-09-30') {
     drag.active = false;
     return;
@@ -939,7 +929,6 @@ function toggleFullscreen() {
 }
 
 document.addEventListener('fullscreenchange', () => {
-  // Swap between expand and compress icon
   document.getElementById('fs-icon').innerHTML = document.fullscreenElement
     ? '<path d="M5.5 1v4.5H1M9.5 1V5.5H14M14 9.5H9.5V14M5.5 14V9.5H1"/>'
     : '<path d="M1 5.5V1h4.5M9.5 1H14v4.5M14 9.5V14H9.5M5.5 14H1V9.5"/>';
@@ -993,9 +982,14 @@ function el(tag, cls) {
 //  BOOTSTRAP
 // ==========================================================
 
-loadFromStorage();
-renderCalendar();
+async function init() {
+  await loadFromStorage();
+  renderCalendar();
+}
+
+init();
 
 </script>
 </body>
 </html>
+```
