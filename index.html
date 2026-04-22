@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Summer Calendar 2026</title>
+<style>
+
+/* ==========================================================
+   RESET & BASE
+   ========================================================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: #f3f2ee;
+  color: #1a1a1a;
+  min-height: 100vh;
+  padding: 48px 20px 72px;
+}
+
+/* ==========================================================
+   HEADER
+   ========================================================== */
+.header {
+  max-width: 920px;
+  margin: 0 auto 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  font-weight: 300;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.header p {
+  text-align: center;
+  font-size: 0.74rem;
+  color: #b8b8b8;
+  letter-spacing: 0.05em;
+  margin-top: 9px;
+}
+
+.header-actions {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e2e2;
+  background: #fff;
+  color: #b0b0b0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.icon-btn:hover { border-color: #aaa; color: #1a1a1a; }
+
+/* ==========================================================
+   CALENDAR CONTAINER
+   ========================================================== */
+.calendar {
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+/* ==========================================================
+   MONTH BLOCK
+   ========================================================== */
+.month-block {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 28px 22px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 6px 24px rgba(0,0,0,0.04);
+}
+
+.month-name {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin-bottom: 18px;
+}
+
+/* ==========================================================
+   DAY-OF-WEEK HEADER
+   ========================================================== */
+.dow-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+
+.dow-label {
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c8c8c8;
+  padding: 4px 0 10px;
+}
+
+.dow-label.weekend { color: #e0e0e0; }
+
+/* ==========================================================
+   WEEK ROW
+   ========================================================== */
+.week-row {
+  position: relative;        /* anchor for absolute event layer */
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  min-height: 64px;
+  margin-bottom: 2px;
+}
+
+/* ==========================================================
+   DAY CELL
+   ========================================================== */
+.day-cell {
+  position: relative;
+  min-height: 64px;
+  padding: 7px 5px 5px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.day-cell:hover            { background: #f5f5f3; }
+.day-cell.weekend          { background: #fafafa; }
+.day-cell.weekend:hover    { background: #f0f0ee; }
+.day-cell.empty            { cursor: default; pointer-events: none; }
+.day-cell.drop-highlight   { background: rgba(26,26,26,0.07) !important; }
+
+.day-cell.today .day-num {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.day-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  border-radius: 50%;
+  color: #1a1a1a;
+  position: relative;
+  z-index: 1;               /* stay above event bars */
+}
+
+/* Small "+" button that appears on hover */
+.add-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 1.5px solid #ddd;
+  background: transparent;
+  color: #ccc;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, border-color 0.12s, color 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.day-cell:hover .add-btn { opacity: 1; }
+.add-btn:hover { border-color: #888; color: #555; }
+
+/* ==========================================================
+   EVENT LAYER  (absolutely covers the entire week row)
+   ========================================================== */
+.event-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;     /* clicks fall through to day cells … */
+  overflow: visible;
+  z-index: 2;
+}
+
+/* ==========================================================
+   EVENT BAR
+   ========================================================== */
+.event-bar {
+  position: absolute;
+  height: 22px;
+  line-height: 22px;
+  font-size: 0.69rem;
+  font-weight: 600;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: grab;
+  pointer-events: all;      /* … but event bars ARE clickable */
+  user-select: none;
+  transition: filter 0.1s, transform 0.12s;
+}
+
+.event-bar:hover {
+  filter: brightness(0.92);
+  transform: translateY(-1px);
+}
+
+.event-bar:active      { cursor: grabbing; }
+.event-bar.is-dragging { opacity: 0.3; }
+
+/* ==========================================================
+   MODAL BACKDROP
+   ========================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.22);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s;
+}
+
+.modal-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ==========================================================
+   MODAL CARD
+   ========================================================== */
+.modal-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 28px 22px;
+  width: 340px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.16);
+  transform: translateY(6px);
+  transition: transform 0.18s;
+}
+
+.modal-backdrop.open .modal-card { transform: translateY(0); }
+
+.modal-heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.field       { margin-bottom: 13px; }
+
+.field label {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #b8b8b8;
+  margin-bottom: 5px;
+}
+
+.field input[type="text"],
+.field input[type="date"] {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-family: inherit;
+  color: #1a1a1a;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input:focus { border-color: #1a1a1a; }
+
+/* Color swatch picker */
+.swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: transform 0.1s;
+  flex-shrink: 0;
+}
+
+.swatch:hover    { transform: scale(1.14); }
+.swatch.selected { border-color: #1a1a1a; }
+
+/* Modal action buttons */
+.modal-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 20px;
+  align-items: center;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: opacity 0.12s;
+}
+
+.btn:hover    { opacity: 0.75; }
+.btn-primary  { background: #1a1a1a; color: #fff; flex: 1; }
+.btn-cancel   { background: #f0f0ee; color: #666; }
+.btn-delete   { background: #fff0f0; color: #c0392b; margin-right: auto; }
+
+/* ==========================================================
+   TOAST NOTIFICATION
+   ========================================================== */
+.toast {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 9px 18px;
+  border-radius: 30px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 2000;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+</style>
+</head>
+<body>
+
+<!-- =========================================================
+     HEADER
+     ========================================================= -->
+<header class="header">
+  <div>
+    <h1>Summer 2026</h1>
+    <p>Click a day to add an event &middot; Drag to move &middot; Click event to edit</p>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="fs-btn" title="Toggle fullscreen" onclick="toggleFullscreen()">
+      <svg id="fs-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"
+           stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 5.5V1h4.5M9.5 1H14v4.5M14 9.5V14H9.5M5.5 14H1V9.5"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- =========================================================
+     CALENDAR  (populated by JavaScript)
+     ========================================================= -->
+<main class="calendar" id="calendar"></main>
+
+<!-- =========================================================
+     EVENT MODAL
+     ========================================================= -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-heading" id="modal-heading">Add Event</div>
+
+    <div class="field">
+      <label>Event Name</label>
+      <input type="text" id="f-name" placeholder="e.g. Summer Camp" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label>Start Date</label>
+      <input type="date" id="f-start" />
+    </div>
+    <div class="field">
+      <label>End Date</label>
+      <input type="date" id="f-end" />
+    </div>
+    <div class="field">
+      <label>Color</label>
+      <div class="swatches" id="swatches"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-delete" id="btn-delete" onclick="confirmDelete()" style="display:none">Delete</button>
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEvent()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+
+// ==========================================================
+//  CONFIGURATION & CONSTANTS
+// ==========================================================
+
+const YEAR   = 2026;
+const MONTHS = [5, 6, 7, 8]; // 0-indexed: Jun=5 Jul=6 Aug=7 Sep=8
+
+const MONTH_NAMES = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December'
+];
+
+const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const STORAGE_KEY = 'family-summer-2026';
+
+// Color palette for events
+const PALETTE = [
+  { id:'rose',   bg:'#FFE0DC', fg:'#B23A2E' },
+  { id:'peach',  bg:'#FFE8C8', fg:'#A0521A' },
+  { id:'yellow', bg:'#FFF5B8', fg:'#8A6E0A' },
+  { id:'green',  bg:'#D4F5D0', fg:'#1E7A40' },
+  { id:'teal',   bg:'#C8EEF5', fg:'#1A5F72' },
+  { id:'blue',   bg:'#D0D8FF', fg:'#2C3DB0' },
+  { id:'purple', bg:'#EDD5FF', fg:'#7030A0' },
+  { id:'pink',   bg:'#FFD8EE', fg:'#9C2560' },
+  { id:'gray',   bg:'#E2E2E2', fg:'#505050' },
+];
+
+// Events that ship with a fresh calendar (before any user edits)
+const DEFAULT_EVENTS = [
+  { id:1, title:'Last day of school',  start:'2026-06-19', end:'2026-06-19', colorId:'rose'  },
+  { id:2, title:'First day of school', start:'2026-09-07', end:'2026-09-07', colorId:'green' },
+];
+
+
+// ==========================================================
+//  APPLICATION STATE
+// ==========================================================
+
+let events  = [];   // array of event objects
+let nextId  = 10;   // counter for new event IDs
+
+// Modal working state
+let modal = {
+  mode:    null,   // 'add' | 'edit'
+  editId:  null,   // event id being edited
+  colorId: 'blue', // currently selected color
+};
+
+// Drag-and-drop working state
+let drag = {
+  active:      false,
+  eventId:     null,
+  grabbedDate: null, // YYYY-MM-DD of the day grabbed within the event
+};
+
+
+// ==========================================================
+//  DATE UTILITIES
+// ==========================================================
+
+/** Build a YYYY-MM-DD string. month is 0-indexed. */
+function dateStr(year, month, day) {
+  return `${year}-${pad2(month + 1)}-${pad2(day)}`;
+}
+
+/** Parse YYYY-MM-DD → local Date object */
+function parseDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Native Date → YYYY-MM-DD */
+function dateToStr(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+}
+
+/** Add n days to a date string, return new date string */
+function addDays(str, n) {
+  const d = parseDate(str);
+  d.setDate(d.getDate() + n);
+  return dateToStr(d);
+}
+
+/** Integer number of days from dateStr a to dateStr b (can be negative) */
+function daysDiff(a, b) {
+  return Math.round((parseDate(b) - parseDate(a)) / 86400000);
+}
+
+/** Day-of-week for a date string. Returns 0=Monday … 6=Sunday */
+function dayOfWeek(str) {
+  return (parseDate(str).getDay() + 6) % 7;
+}
+
+/** Number of days in a given month (month is 0-indexed) */
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+/** Today as YYYY-MM-DD */
+const TODAY = dateToStr(new Date());
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+
+// ==========================================================
+//  CALENDAR MATH
+// ==========================================================
+
+/**
+ * Generate week arrays for a month.
+ * Returns an array of weeks; each week is 7 slots (null = empty, number = day-of-month).
+ * Weeks start on Monday.
+ */
+function weeksForMonth(year, month) {
+  const total    = daysInMonth(year, month);
+  const startDow = dayOfWeek(dateStr(year, month, 1));
+  const weeks    = [];
+
+  let week = new Array(7).fill(null);
+  let col  = startDow;
+
+  for (let day = 1; day <= total; day++) {
+    week[col] = day;
+    if (col === 6 || day === total) {
+      weeks.push([...week]);
+      week = new Array(7).fill(null);
+    }
+    col = (col + 1) % 7;
+  }
+  return weeks;
+}
+
+/**
+ * Find the column (0–6) of a date string within a week array.
+ * The date must belong to the same year/month as the week.
+ */
+function colForDate(week, str) {
+  return week.indexOf(parseDate(str).getDate());
+}
+
+
+// ==========================================================
+//  LOCAL STORAGE
+// ==========================================================
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ events, nextId }));
+  } catch (e) { /* storage unavailable */ }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.events) && data.events.length > 0) {
+        events = data.events;
+        nextId = data.nextId ?? 10;
+        return;
+      }
+    }
+  } catch (e) { /* fall through */ }
+
+  // First load — use the default events
+  events = DEFAULT_EVENTS.map(e => ({ ...e }));
+  nextId = 10;
+}
+
+
+// ==========================================================
+//  CALENDAR RENDERING
+// ==========================================================
+
+/** Rebuild and inject the full calendar into #calendar */
+function renderCalendar() {
+  const root = document.getElementById('calendar');
+  root.innerHTML = '';
+  MONTHS.forEach(month => root.appendChild(buildMonthBlock(YEAR, month)));
+}
+
+/** Build a complete month section */
+function buildMonthBlock(year, month) {
+  const block = el('div', 'month-block');
+
+  // Month name heading
+  const title = el('div', 'month-name');
+  title.textContent = MONTH_NAMES[month];
+  block.appendChild(title);
+
+  // Mon … Sun header row
+  const dowRow = el('div', 'dow-header');
+  DAY_LABELS.forEach((label, i) => {
+    const cell = el('div', 'dow-label' + (i >= 5 ? ' weekend' : ''));
+    cell.textContent = label;
+    dowRow.appendChild(cell);
+  });
+  block.appendChild(dowRow);
+
+  // Week rows
+  weeksForMonth(year, month).forEach(week => {
+    block.appendChild(buildWeekRow(week, year, month));
+  });
+
+  return block;
+}
+
+/** Build one week row: seven day cells + an event overlay */
+function buildWeekRow(week, year, month) {
+  const row = el('div', 'week-row');
+
+  // Determine the date range covered by non-null slots in this week
+  let weekStart = null, weekEnd = null;
+  week.forEach(day => {
+    if (day === null) return;
+    const d = dateStr(year, month, day);
+    if (!weekStart) weekStart = d;
+    weekEnd = d;
+  });
+
+  // Day cells
+  week.forEach((day, col) => {
+    row.appendChild(buildDayCell(day, col, year, month));
+  });
+
+  // Event overlay (only when the week has valid dates)
+  if (weekStart) {
+    const weekEvents = events.filter(ev => ev.start <= weekEnd && ev.end >= weekStart);
+    if (weekEvents.length > 0) {
+      const { layer, laneCount } = buildEventLayer(weekEvents, week, weekStart, weekEnd, year, month);
+      row.appendChild(layer);
+      // Expand row height to fit all event lanes without clipping
+      row.style.minHeight = Math.max(64, 34 + laneCount * 26 + 4) + 'px';
+    }
+  }
+
+  return row;
+}
+
+/** Build one day cell */
+function buildDayCell(day, col, year, month) {
+  const isEmpty  = (day === null);
+  const isWeekend = (col >= 5);
+  const cell = el('div', ['day-cell', isWeekend && 'weekend', isEmpty && 'empty'].filter(Boolean).join(' '));
+
+  if (!isEmpty) {
+    const ds = dateStr(year, month, day);
+    if (ds === TODAY) cell.classList.add('today');
+    cell.dataset.date = ds;
+
+    // Day number
+    const num = el('span', 'day-num');
+    num.textContent = day;
+    cell.appendChild(num);
+
+    // Hover "+" button
+    const addBtn = el('button', 'add-btn');
+    addBtn.textContent = '+';
+    addBtn.title = 'Add event';
+    addBtn.addEventListener('click', e => { e.stopPropagation(); openAddModal(ds); });
+    cell.appendChild(addBtn);
+
+    // Click anywhere in the cell to add
+    cell.addEventListener('click', () => openAddModal(ds));
+
+    // Drop target for drag-and-drop
+    cell.addEventListener('dragover',  e => { e.preventDefault(); cell.classList.add('drop-highlight'); });
+    cell.addEventListener('dragleave', ()  => cell.classList.remove('drop-highlight'));
+    cell.addEventListener('drop', e => {
+      e.preventDefault();
+      cell.classList.remove('drop-highlight');
+      handleDrop(ds);
+    });
+  }
+
+  return cell;
+}
+
+/**
+ * Build the absolutely-positioned event overlay for one week row.
+ * Returns { layer: HTMLElement, laneCount: number }.
+ */
+function buildEventLayer(weekEvents, week, weekStart, weekEnd, year, month) {
+  const layer = el('div', 'event-layer');
+  const lanes = []; // tracks occupied column ranges per lane
+
+  weekEvents.forEach(ev => {
+    // Clamp event dates to this week's visible range
+    const clampedStart = ev.start < weekStart ? weekStart : ev.start;
+    const clampedEnd   = ev.end   > weekEnd   ? weekEnd   : ev.end;
+
+    const startCol = colForDate(week, clampedStart);
+    const endCol   = colForDate(week, clampedEnd);
+
+    // Assign to the first lane that has no column conflict
+    let lane = 0;
+    while (true) {
+      if (!lanes[lane]) lanes[lane] = [];
+      const conflict = lanes[lane].some(r => !(r.endCol < startCol || r.startCol > endCol));
+      if (!conflict) break;
+      lane++;
+    }
+    lanes[lane].push({ startCol, endCol });
+
+    layer.appendChild(buildEventBar(ev, startCol, endCol, lane, weekStart, weekEnd));
+  });
+
+  return { layer, laneCount: lanes.length };
+}
+
+/** Build a single event bar positioned within its week row */
+function buildEventBar(ev, startCol, endCol, lane, weekStart, weekEnd) {
+  const bar = el('div', 'event-bar');
+  bar.dataset.eid = ev.id;
+
+  const color = PALETTE.find(p => p.id === ev.colorId) ?? PALETTE[0];
+  bar.style.background = color.bg;
+  bar.style.color      = color.fg;
+
+  // Horizontal position (percentage-based columns with small inset gaps)
+  const colW = 100 / 7;
+  const gap  = 1.5;
+  bar.style.left   = `calc(${startCol * colW}% + ${gap}px)`;
+  bar.style.width  = `calc(${(endCol - startCol + 1) * colW}% - ${gap * 2}px)`;
+
+  // Vertical position (below day numbers, stacked by lane)
+  bar.style.top = `${32 + lane * 26}px`;
+
+  // Only round the corners at the true start and end of the event
+  const roundL = ev.start >= weekStart ? '4px' : '0';
+  const roundR = ev.end   <= weekEnd   ? '4px' : '0';
+  bar.style.borderRadius = `${roundL} ${roundR} ${roundR} ${roundL}`;
+
+  // Label text — show a small arrow if the event continues from a previous week
+  if (ev.start >= weekStart) {
+    bar.textContent = ev.title;
+  } else {
+    bar.innerHTML = `<span style="opacity:.4;margin-right:3px">&#9664;</span>${ev.title}`;
+  }
+
+  // ── Drag ──────────────────────────────────────────────
+  bar.setAttribute('draggable', 'true');
+
+  bar.addEventListener('dragstart', e => {
+    // Calculate which day within the event the user grabbed
+    const rect      = bar.getBoundingClientRect();
+    const dayWidth  = rect.width / (endCol - startCol + 1);
+    const offset    = Math.max(0, Math.floor((e.clientX - rect.left) / dayWidth));
+    const grabbed   = addDays(ev.start < weekStart ? weekStart : ev.start, offset);
+
+    drag = { active: true, eventId: ev.id, grabbedDate: grabbed };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(ev.id));
+
+    // Delay so the drag ghost renders before the bar fades
+    setTimeout(() => bar.classList.add('is-dragging'), 0);
+  });
+
+  bar.addEventListener('dragend', () => {
+    bar.classList.remove('is-dragging');
+    drag.active = false;
+  });
+
+  // ── Click to edit ─────────────────────────────────────
+  bar.addEventListener('click', e => { e.stopPropagation(); openEditModal(ev.id); });
+
+  return bar;
+}
+
+
+// ==========================================================
+//  DRAG AND DROP
+// ==========================================================
+
+/** Called when an event bar is dropped on a day cell */
+function handleDrop(targetDate) {
+  if (!drag.active) return;
+
+  const ev = events.find(e => e.id === drag.eventId);
+  if (!ev) { drag.active = false; return; }
+
+  const duration = daysDiff(ev.start, ev.end);
+  const delta    = daysDiff(drag.grabbedDate, targetDate);
+  const newStart = addDays(ev.start, delta);
+  const newEnd   = addDays(newStart, duration);
+
+  // Stay within the visible summer range
+  if (newStart < '2026-06-01' || newEnd > '2026-09-30') {
+    drag.active = false;
+    return;
+  }
+
+  ev.start = newStart;
+  ev.end   = newEnd;
+  drag.active = false;
+
+  saveToStorage();
+  renderCalendar();
+}
+
+
+// ==========================================================
+//  MODAL — ADD / EDIT EVENTS
+// ==========================================================
+
+function openAddModal(date) {
+  modal = { mode: 'add', editId: null, colorId: 'blue' };
+
+  document.getElementById('modal-heading').textContent = 'Add Event';
+  document.getElementById('f-name').value  = '';
+  document.getElementById('f-start').value = date;
+  document.getElementById('f-end').value   = date;
+  document.getElementById('btn-delete').style.display = 'none';
+
+  renderSwatches();
+  openModal();
+  setTimeout(() => document.getElementById('f-name').focus(), 60);
+}
+
+function openEditModal(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+
+  modal = { mode: 'edit', editId: id, colorId: ev.colorId };
+
+  document.getElementById('modal-heading').textContent = 'Edit Event';
+  document.getElementById('f-name').value  = ev.title;
+  document.getElementById('f-start').value = ev.start;
+  document.getElementById('f-end').value   = ev.end;
+  document.getElementById('btn-delete').style.display = '';
+
+  renderSwatches();
+  openModal();
+  setTimeout(() => document.getElementById('f-name').focus(), 60);
+}
+
+function openModal()  { document.getElementById('modal-backdrop').classList.add('open');    }
+function closeModal() { document.getElementById('modal-backdrop').classList.remove('open'); }
+
+/** Rebuild the color swatch picker */
+function renderSwatches() {
+  const container = document.getElementById('swatches');
+  container.innerHTML = '';
+  PALETTE.forEach(color => {
+    const swatch = el('div', 'swatch' + (color.id === modal.colorId ? ' selected' : ''));
+    swatch.style.background  = color.bg;
+    swatch.style.borderColor = color.id === modal.colorId ? color.fg : 'transparent';
+    swatch.title = color.id;
+    swatch.addEventListener('click', () => {
+      modal.colorId = color.id;
+      renderSwatches();
+    });
+    container.appendChild(swatch);
+  });
+}
+
+/** Save button handler */
+function saveEvent() {
+  const name  = document.getElementById('f-name').value.trim();
+  const start = document.getElementById('f-start').value;
+  let   end   = document.getElementById('f-end').value;
+
+  if (!name)  { document.getElementById('f-name').focus(); return; }
+  if (!start) return;
+  if (!end || end < start) end = start;
+
+  if (modal.mode === 'add') {
+    events.push({ id: nextId++, title: name, start, end, colorId: modal.colorId });
+  } else {
+    const ev = events.find(e => e.id === modal.editId);
+    if (ev) Object.assign(ev, { title: name, start, end, colorId: modal.colorId });
+  }
+
+  saveToStorage();
+  closeModal();
+  renderCalendar();
+}
+
+/** Delete button handler */
+function confirmDelete() {
+  events = events.filter(e => e.id !== modal.editId);
+  saveToStorage();
+  closeModal();
+  renderCalendar();
+}
+
+
+// ==========================================================
+//  FULLSCREEN
+// ==========================================================
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  // Swap between expand and compress icon
+  document.getElementById('fs-icon').innerHTML = document.fullscreenElement
+    ? '<path d="M5.5 1v4.5H1M9.5 1V5.5H14M14 9.5H9.5V14M5.5 14V9.5H1"/>'
+    : '<path d="M1 5.5V1h4.5M9.5 1H14v4.5M14 9.5V14H9.5M5.5 14H1V9.5"/>';
+});
+
+
+// ==========================================================
+//  KEYBOARD SHORTCUTS & MODAL BACKDROP CLICK
+// ==========================================================
+
+document.getElementById('modal-backdrop').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+document.addEventListener('keydown', e => {
+  const isOpen = document.getElementById('modal-backdrop').classList.contains('open');
+  if (!isOpen) return;
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') saveEvent();
+});
+
+
+// ==========================================================
+//  TOAST NOTIFICATION
+// ==========================================================
+
+let _toastTimer = null;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+
+// ==========================================================
+//  UTILITY
+// ==========================================================
+
+/** Shorthand: create a DOM element with a class string */
+function el(tag, cls) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+
+
+// ==========================================================
+//  BOOTSTRAP
+// ==========================================================
+
+loadFromStorage();
+renderCalendar();
+
+</script>
+</body>
+</html>
