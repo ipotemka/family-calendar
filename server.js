@@ -64,7 +64,7 @@ app.post("/api/events", async (req, res) => {
           updated_at = NOW()
       WHERE id = 1
       `,
-      [JSON.stringify(events), nextId || 10]
+      [JSON.stringify(events), Number.isInteger(nextId) ? nextId : 10]
     );
 
     res.json({ success: true });
