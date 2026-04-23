@@ -1,12 +1,13 @@
 const express = require("express");
+const path = require("path");
 const { Pool } = require("pg");
 
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
 const pool = new Pool({
   host: process.env.PGHOST,
-  port: process.env.PGPORT,
+  port: Number(process.env.PGPORT),
   user: process.env.PGUSER,
   password: process.env.PGPASSWORD,
   database: process.env.PGDATABASE,
@@ -15,55 +16,73 @@ const pool = new Pool({
   },
 });
 
+app.use(express.json());
+app.use(express.static(__dirname));
 
-// создать таблицу если её ещё нет
-pool.query(`
-CREATE TABLE IF NOT EXISTS events (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  color TEXT
-)
-`);
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS calendar_state (
+      id INTEGER PRIMARY KEY,
+      events JSONB NOT NULL DEFAULT '[]'::jsonb,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 
+  await pool.query(`
+    INSERT INTO calendar_state (id, events)
+    VALUES (1, '[]'::jsonb)
+    ON CONFLICT (id) DO NOTHING;
+  `);
+}
 
-// проверить соединение
-app.get("/", async (req, res) => {
-  const result = await pool.query("SELECT NOW()");
-  res.send("DB connected: " + result.rows[0].now);
-});
-
-
-// получить все события
 app.get("/api/events", async (req, res) => {
-  const result = await pool.query("SELECT * FROM events ORDER BY start_date");
-  res.json(result.rows);
+  try {
+    const result = await pool.query(
+      "SELECT events FROM calendar_state WHERE id = 1"
+    );
+    res.json(result.rows[0]?.events || []);
+  } catch (error) {
+    console.error("GET /api/events error:", error);
+    res.status(500).json({ error: "Failed to load events" });
+  }
 });
 
-
-// создать событие
 app.post("/api/events", async (req, res) => {
-  const { title, start_date, end_date, color } = req.body;
+  try {
+    const events = req.body;
 
-  const result = await pool.query(
-    "INSERT INTO events (title, start_date, end_date, color) VALUES ($1,$2,$3,$4) RETURNING *",
-    [title, start_date, end_date, color]
-  );
+    if (!Array.isArray(events)) {
+      return res.status(400).json({ error: "Invalid events format" });
+    }
 
-  res.json(result.rows[0]);
+    await pool.query(
+      `
+      UPDATE calendar_state
+      SET events = $1::jsonb,
+          updated_at = NOW()
+      WHERE id = 1
+      `,
+      [JSON.stringify(events)]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("POST /api/events error:", error);
+    res.status(500).json({ error: "Failed to save events" });
+  }
 });
 
-
-// удалить событие
-app.delete("/api/events/:id", async (req, res) => {
-  await pool.query("DELETE FROM events WHERE id=$1", [req.params.id]);
-  res.sendStatus(204);
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
-});
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Database init failed:", err);
+    process.exit(1);
+  });
