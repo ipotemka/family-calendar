@@ -123,7 +123,7 @@ body {
    WEEK ROW
    ========================================================== */
 .week-row {
-  position: relative;
+  position: relative;        /* anchor for absolute event layer */
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   min-height: 64px;
@@ -167,6 +167,7 @@ body {
   z-index: 1;
 }
 
+/* Small "+" button that appears on hover */
 .add-btn {
   position: absolute;
   bottom: 4px;
@@ -192,14 +193,14 @@ body {
 .add-btn:hover { border-color: #888; color: #555; }
 
 /* ==========================================================
-   EVENT LAYER
+   EVENT LAYER  (absolutely covers the entire week row)
    ========================================================== */
 .event-layer {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  pointer-events: none;
+  pointer-events: none;     /* clicks fall through to day cells … */
   overflow: visible;
   z-index: 2;
 }
@@ -218,7 +219,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: grab;
-  pointer-events: all;
+  pointer-events: all;      /* … but event bars ARE clickable */
   user-select: none;
   transition: filter 0.1s, transform 0.12s;
 }
@@ -269,9 +270,22 @@ body {
 .modal-backdrop.open .modal-card { transform: translateY(0); }
 
 .modal-heading {
-  font-size: 0.95rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #b8b8b8;
+  margin-bottom: 4px;
+}
+
+/* Full event title shown prominently in edit mode */
+.modal-event-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 18px;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .field       { margin-bottom: 13px; }
@@ -301,6 +315,7 @@ body {
 
 .field input:focus { border-color: #1a1a1a; }
 
+/* Color swatch picker */
 .swatches {
   display: flex;
   gap: 6px;
@@ -320,6 +335,7 @@ body {
 .swatch:hover    { transform: scale(1.14); }
 .swatch.selected { border-color: #1a1a1a; }
 
+/* Modal action buttons */
 .modal-actions {
   display: flex;
   gap: 7px;
@@ -370,6 +386,98 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* ==========================================================
+   MOBILE  (≤ 600px)
+   ========================================================== */
+@media (max-width: 600px) {
+
+  body {
+    padding: 20px 6px 52px;
+  }
+
+  .header {
+    margin-bottom: 28px;
+    padding: 0 4px;
+  }
+
+  .header h1 {
+    font-size: 1.15rem;
+    letter-spacing: 0.18em;
+  }
+
+  .header p {
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+  }
+
+  .calendar {
+    gap: 20px;
+  }
+
+  .month-block {
+    padding: 16px 7px 12px;
+    border-radius: 14px;
+  }
+
+  .month-name {
+    font-size: 1.05rem;
+    margin-bottom: 10px;
+    padding-left: 2px;
+  }
+
+  .dow-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.03em;
+    padding: 2px 0 7px;
+  }
+
+  .week-row {
+    min-height: 44px;
+    margin-bottom: 1px;
+  }
+
+  .day-cell {
+    min-height: 44px;
+    padding: 4px 2px 3px;
+    border-radius: 6px;
+  }
+
+  .day-num {
+    width: 18px;
+    height: 18px;
+    font-size: 0.62rem;
+  }
+
+  /* Hide hover "+" on mobile — tapping the cell still opens the modal */
+  .add-btn {
+    display: none;
+  }
+
+  /* Event bars: taller, allow up to 2 lines of text */
+  .event-bar {
+    height: auto;
+    min-height: 22px;
+    line-height: 1.25;
+    white-space: normal;
+    /* clamp to 2 lines with ellipsis */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 3px 4px;
+    /* disable hover lift on touch devices */
+    transform: none !important;
+  }
+
+  /* Make the modal fill the screen width on small phones */
+  .modal-card {
+    width: calc(100vw - 32px);
+    padding: 22px 20px 18px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -402,7 +510,10 @@ body {
      ========================================================= -->
 <div class="modal-backdrop" id="modal-backdrop">
   <div class="modal-card">
+    <!-- Mode label ("Add Event" / "Edit Event") -->
     <div class="modal-heading" id="modal-heading">Add Event</div>
+    <!-- Full event title shown prominently when editing -->
+    <div class="modal-event-title" id="modal-event-title"></div>
 
     <div class="field">
       <label>Event Name</label>
@@ -578,6 +689,29 @@ function colForDate(week, str) {
 
 
 // ==========================================================
+//  LAYOUT CONFIG  (desktop vs mobile)
+// ==========================================================
+
+/**
+ * Returns lane-positioning constants appropriate for the current viewport.
+ * Called at render time so device rotation is handled automatically.
+ *
+ *  topOffset   — px from the top of the week row to the first event lane
+ *  laneHeight  — px per lane (controls vertical spacing between stacked events)
+ *  baseRowHeight — minimum row height when no events are present
+ */
+function getLaneConfig() {
+  if (window.innerWidth <= 600) {
+    // Mobile: day numbers are 18px, top padding 4px → first bar at ~24px.
+    // Bars can be up to ~28px tall (2-line text), so lanes need 32px spacing.
+    return { topOffset: 24, laneHeight: 32, baseRowHeight: 44 };
+  }
+  // Desktop defaults
+  return { topOffset: 32, laneHeight: 26, baseRowHeight: 64 };
+}
+
+
+// ==========================================================
 //  API PERSISTENCE
 // ==========================================================
 
@@ -674,7 +808,9 @@ function buildWeekRow(week, year, month) {
     if (weekEvents.length > 0) {
       const { layer, laneCount } = buildEventLayer(weekEvents, week, weekStart, weekEnd, year, month);
       row.appendChild(layer);
-      row.style.minHeight = Math.max(64, 34 + laneCount * 26 + 4) + 'px';
+      // Expand row height to accommodate all event lanes without clipping
+      const { topOffset, laneHeight, baseRowHeight } = getLaneConfig();
+      row.style.minHeight = Math.max(baseRowHeight, topOffset + laneCount * laneHeight + 4) + 'px';
     }
   }
 
@@ -722,7 +858,7 @@ function buildDayCell(day, col, year, month) {
  */
 function buildEventLayer(weekEvents, week, weekStart, weekEnd, year, month) {
   const layer = el('div', 'event-layer');
-  const lanes = [];
+  const lanes = []; // tracks occupied column ranges per lane
 
   weekEvents.forEach(ev => {
     const clampedStart = ev.start < weekStart ? weekStart : ev.start;
@@ -731,6 +867,7 @@ function buildEventLayer(weekEvents, week, weekStart, weekEnd, year, month) {
     const startCol = colForDate(week, clampedStart);
     const endCol   = colForDate(week, clampedEnd);
 
+    // Assign to the first lane that has no column conflict
     let lane = 0;
     while (true) {
       if (!lanes[lane]) lanes[lane] = [];
@@ -755,22 +892,29 @@ function buildEventBar(ev, startCol, endCol, lane, weekStart, weekEnd) {
   bar.style.background = color.bg;
   bar.style.color      = color.fg;
 
+  // Horizontal position: percentage-based columns with small inset gaps
   const colW = 100 / 7;
   const gap  = 1.5;
   bar.style.left   = `calc(${startCol * colW}% + ${gap}px)`;
   bar.style.width  = `calc(${(endCol - startCol + 1) * colW}% - ${gap * 2}px)`;
-  bar.style.top    = `${32 + lane * 26}px`;
 
+  // Vertical position: use viewport-aware config so mobile gets more room
+  const { topOffset, laneHeight } = getLaneConfig();
+  bar.style.top = `${topOffset + lane * laneHeight}px`;
+
+  // Only round the corners at the true start and end of the event
   const roundL = ev.start >= weekStart ? '4px' : '0';
   const roundR = ev.end   <= weekEnd   ? '4px' : '0';
   bar.style.borderRadius = `${roundL} ${roundR} ${roundR} ${roundL}`;
 
+  // Label: show a small arrow if the event continues from a previous week
   if (ev.start >= weekStart) {
     bar.textContent = ev.title;
   } else {
     bar.innerHTML = `<span style="opacity:.4;margin-right:3px">&#9664;</span>${ev.title}`;
   }
 
+  // ── Drag ──────────────────────────────────────────────────
   bar.setAttribute('draggable', 'true');
 
   bar.addEventListener('dragstart', e => {
@@ -791,6 +935,7 @@ function buildEventBar(ev, startCol, endCol, lane, weekStart, weekEnd) {
     drag.active = false;
   });
 
+  // ── Click / tap to edit ───────────────────────────────────
   bar.addEventListener('click', e => { e.stopPropagation(); openEditModal(ev.id); });
 
   return bar;
@@ -813,6 +958,7 @@ function handleDrop(targetDate) {
   const newStart = addDays(ev.start, delta);
   const newEnd   = addDays(newStart, duration);
 
+  // Stay within the visible summer range
   if (newStart < '2026-06-01' || newEnd > '2026-09-30') {
     drag.active = false;
     return;
@@ -834,7 +980,8 @@ function handleDrop(targetDate) {
 function openAddModal(date) {
   modal = { mode: 'add', editId: null, colorId: 'blue' };
 
-  document.getElementById('modal-heading').textContent = 'Add Event';
+  document.getElementById('modal-heading').textContent    = 'Add Event';
+  document.getElementById('modal-event-title').textContent = '';  // hidden when empty
   document.getElementById('f-name').value  = '';
   document.getElementById('f-start').value = date;
   document.getElementById('f-end').value   = date;
@@ -851,7 +998,9 @@ function openEditModal(id) {
 
   modal = { mode: 'edit', editId: id, colorId: ev.colorId };
 
-  document.getElementById('modal-heading').textContent = 'Edit Event';
+  document.getElementById('modal-heading').textContent     = 'Edit Event';
+  // Show the full title prominently — useful when the bar text was truncated
+  document.getElementById('modal-event-title').textContent = ev.title;
   document.getElementById('f-name').value  = ev.title;
   document.getElementById('f-start').value = ev.start;
   document.getElementById('f-end').value   = ev.end;
@@ -973,6 +1122,13 @@ function el(tag, cls) {
   if (cls) e.className = cls;
   return e;
 }
+
+// Re-render on resize / device rotation so lane heights update correctly
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(renderCalendar, 200);
+});
 
 
 // ==========================================================
