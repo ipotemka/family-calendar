@@ -1,31 +1,30 @@
 "use strict";
 
-const express   = require("express");
-const path      = require("path");
-const { Pool }  = require("pg");
+const express = require("express");
+const path = require("path");
+const { Pool } = require("pg");
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ─────────────────────────────────────────────────────────────
-// PostgreSQL connection
-// DATABASE_URL is provided automatically by Railway
-// ssl.rejectUnauthorized = false is required by Railway
-// ─────────────────────────────────────────────────────────────
+// PostgreSQL connection (Railway provides DATABASE_URL automatically)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-// ─────────────────────────────────────────────────────────────
 // Middleware
-// ─────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// ═════════════════════════════════════════════════════════════
-// EVENTS
-// ═════════════════════════════════════════════════════════════
+/*
+═════════════════════════════════════════════════════════════
+EVENTS
+Frontend contract unchanged:
+GET  /api/events  → returns array of events
+POST /api/events  → receives full array and replaces DB
+═════════════════════════════════════════════════════════════
+*/
 
 // GET /api/events
 app.get("/api/events", async (req, res) => {
@@ -35,8 +34,8 @@ app.get("/api/events", async (req, res) => {
         id,
         title,
         start_date::TEXT AS start,
-        end_date::TEXT   AS "end",
-        color_id         AS "colorId"
+        end_date::TEXT AS "end",
+        color AS "colorId"
       FROM events
       ORDER BY start_date
     `);
@@ -65,7 +64,7 @@ app.post("/api/events", async (req, res) => {
 
     for (const ev of incoming) {
       await client.query(
-        `INSERT INTO events (id, title, start_date, end_date, color_id)
+        `INSERT INTO events (id, title, start_date, end_date, color)
          VALUES ($1, $2, $3, $4, $5)`,
         [ev.id, ev.title, ev.start, ev.end, ev.colorId ?? "blue"]
       );
@@ -76,18 +75,18 @@ app.post("/api/events", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     await client.query("ROLLBACK");
-
     console.error("POST /api/events:", err.message);
-
     res.status(500).json({ error: "Could not save events" });
   } finally {
     client.release();
   }
 });
 
-// ═════════════════════════════════════════════════════════════
-// TASKS
-// ═════════════════════════════════════════════════════════════
+/*
+═════════════════════════════════════════════════════════════
+TASKS
+═════════════════════════════════════════════════════════════
+*/
 
 // GET /api/tasks
 app.get("/api/tasks", async (req, res) => {
@@ -200,7 +199,6 @@ app.delete("/api/tasks/:id", async (req, res) => {
 
   try {
     await pool.query("DELETE FROM tasks WHERE id=$1", [id]);
-
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/tasks/:id:", err.message);
