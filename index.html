@@ -1138,6 +1138,7 @@ window.addEventListener('resize', () => {
 async function init() {
   await loadFromStorage();
   renderCalendar();
+  await loadTasks();
 }
 
 init();
