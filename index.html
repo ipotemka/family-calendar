@@ -482,15 +482,21 @@ body {
    ========================================================== */
 
 .content-row {
-  max-width: 1180px;
+  max-width: 1280px;
   margin: 0 auto;
   display: flex;
   gap: 32px;
   align-items: flex-start;
 }
 
+.content-row .calendar {
+  flex: 1 1 920px;
+  max-width: 920px;
+  margin: 0;
+}
+
 .tasks-panel {
-  width: 272px;
+  flex: 0 0 260px;
   position: sticky;
   top: 32px;
 }
@@ -564,6 +570,27 @@ body {
   color: #bbb;
 }
 
+@media (max-width: 1180px) {
+
+  .content-row {
+    flex-direction: column;
+    max-width: 920px;
+  }
+
+  .content-row .calendar {
+    width: 100%;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  .tasks-panel {
+    width: 100%;
+    max-width: 920px;
+    position: static;
+    margin: 24px auto 0;
+  }
+}
+
 @media (max-width: 600px) {
 
   .content-row {
@@ -576,10 +603,6 @@ body {
     margin-top: 24px;
   }
 }
-</style>
-</head>
-<body>
-
 <!-- =========================================================
      HEADER
      ========================================================= -->
