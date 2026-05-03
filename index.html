@@ -482,15 +482,23 @@ body {
    ========================================================== */
 
 .content-row {
-  max-width: 1180px;
+  width: 100%;
+  max-width: 1500px;
   margin: 0 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(920px, 1fr) 300px;
   gap: 32px;
   align-items: flex-start;
 }
 
+.content-row .calendar {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
 .tasks-panel {
-  width: 272px;
+  width: 100%;
   position: sticky;
   top: 32px;
 }
@@ -564,16 +572,66 @@ body {
   color: #bbb;
 }
 
-@media (max-width: 600px) {
+/* Desktop / tablet fallback:
+   If the screen is not wide enough for calendar + tasks side-by-side,
+   tasks go below the calendar. */
+
+@media (max-width: 1250px) {
 
   .content-row {
+    display: flex;
     flex-direction: column;
+    max-width: 920px;
+    gap: 24px;
+  }
+
+  .content-row .calendar {
+    width: 100%;
+    max-width: 920px;
+    margin: 0 auto;
   }
 
   .tasks-panel {
     width: 100%;
+    max-width: 920px;
+    position: static;
+    margin: 24px auto 0;
+  }
+}
+
+/* Mobile:
+   Calendar first, tasks below, both full width. */
+
+@media (max-width: 600px) {
+
+  body {
+    padding: 20px 6px 52px;
+  }
+
+  .content-row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    gap: 24px;
+  }
+
+  .content-row .calendar {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    gap: 20px;
+  }
+
+  .tasks-panel {
+    width: 100%;
+    max-width: none;
     position: static;
     margin-top: 24px;
+  }
+
+  .month-block {
+    width: 100%;
   }
 }
 </style>
