@@ -643,8 +643,8 @@ body {
      ========================================================= -->
 <header class="header">
   <div>
-    <h1>Summer 2026</h1>
-    <p>Click a day to add an event &middot; Drag to move &middot; Click event to edit</p>
+<h1>Family Travel Plans</h1>
+     <p>Shared family calendar for trips, bookings and travel planning</p>
   </div>
   <div class="header-actions">
     <button class="icon-btn" id="fs-btn" title="Toggle fullscreen" onclick="toggleFullscreen()">
@@ -706,8 +706,8 @@ body {
 // ==========================================================
 
 const YEAR   = 2026;
-const MONTHS = [5, 6, 7, 8]; // 0-indexed: Jun=5 Jul=6 Aug=7 Sep=8
-
+const MONTHS = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
+   
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
   'July','August','September','October','November','December'
@@ -917,7 +917,14 @@ async function saveToStorage() {
 function renderCalendar() {
   const root = document.getElementById('calendar');
   root.innerHTML = '';
-  MONTHS.forEach(month => root.appendChild(buildMonthBlock(YEAR, month)));
+
+  MONTHS.forEach(month => {
+
+    const year = month >= 5 ? 2026 : 2027;
+
+    root.appendChild(buildMonthBlock(year, month));
+
+  });
 }
 
 /** Build a complete month section */
