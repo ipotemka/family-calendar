@@ -634,6 +634,34 @@ body {
     width: 100%;
   }
 }
+   /* Прошедшие дни */
+.day-cell.past {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.day-cell.past .day-num,
+.day-cell.past .event {
+  opacity: 0.55;
+}
+
+/* Сегодня */
+.day-cell.today {
+  background: #fff7d6;
+  border: 2px solid #e0a800;
+}
+
+.day-cell.today .day-num {
+  background: #e0a800;
+  color: white;
+  border-radius: 50%;
+  min-width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
 </style>
 </head>
 <body>
@@ -988,8 +1016,14 @@ function buildDayCell(day, col, year, month) {
 
   if (!isEmpty) {
     const ds = dateStr(year, month, day);
-    if (ds === TODAY) cell.classList.add('today');
-    cell.dataset.date = ds;
+
+if (ds === TODAY) {
+  cell.classList.add('today');
+} else if (ds < TODAY) {
+  cell.classList.add('past');
+}
+
+cell.dataset.date = ds;
 
     const num = el('span', 'day-num');
     num.textContent = day;
